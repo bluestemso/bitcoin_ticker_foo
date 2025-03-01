@@ -50,7 +50,9 @@ class _PriceScreenState extends State<PriceScreen> {
     );
   }
 
-  double spotPrice = 0;
+  double btcPrice = 0;
+  double ethPrice = 0;
+  double ltcPrice = 0;
   bool isLoading = true;
 
   void getSpotPrice() async {
@@ -58,17 +60,40 @@ class _PriceScreenState extends State<PriceScreen> {
       isLoading = true;
     });
     
-    CoinData coinData = CoinData(
-      assetIDBase: 'BTC',
-      assetIDQuote: selectedCurrency,
-    );
-    
-    double price = await coinData.getExchangeRate();
-    
-    setState(() {
-      spotPrice = price;
-      isLoading = false;
-    });
+    try {
+      // Get BTC price
+      CoinData btcData = CoinData(
+        assetIDBase: 'BTC',
+        assetIDQuote: selectedCurrency,
+      );
+      double btcSpotPrice = await btcData.getExchangeRate();
+      
+      // Get ETH price
+      CoinData ethData = CoinData(
+        assetIDBase: 'ETH',
+        assetIDQuote: selectedCurrency,
+      );
+      double ethSpotPrice = await ethData.getExchangeRate();
+      
+      // Get LTC price
+      CoinData ltcData = CoinData(
+        assetIDBase: 'LTC',
+        assetIDQuote: selectedCurrency,
+      );
+      double ltcSpotPrice = await ltcData.getExchangeRate();
+      
+      setState(() {
+        btcPrice = btcSpotPrice;
+        ethPrice = ethSpotPrice;
+        ltcPrice = ltcSpotPrice;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error getting prices: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -89,25 +114,30 @@ class _PriceScreenState extends State<PriceScreen> {
         children: <Widget>[
           Padding(
             padding: EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
-            child: Card(
-              color: Colors.lightBlueAccent,
-              elevation: 5.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
-                child: Text(
-                  isLoading 
-                      ? 'Loading...' 
-                      : '1 BTC = ${_formatPrice(spotPrice)}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    color: Colors.white,
-                  ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CryptoCard(
+                  cryptoName: 'BTC',
+                  price: btcPrice,
+                  selectedCurrency: selectedCurrency,
+                  isLoading: isLoading,
                 ),
-              ),
+                SizedBox(height: 15.0),
+                CryptoCard(
+                  cryptoName: 'ETH',
+                  price: ethPrice,
+                  selectedCurrency: selectedCurrency,
+                  isLoading: isLoading,
+                ),
+                SizedBox(height: 15.0),
+                CryptoCard(
+                  cryptoName: 'LTC',
+                  price: ltcPrice,
+                  selectedCurrency: selectedCurrency,
+                  isLoading: isLoading,
+                ),
+              ],
             ),
           ),
           Container(
@@ -121,8 +151,47 @@ class _PriceScreenState extends State<PriceScreen> {
       ),
     );
   }
+}
 
-  String _formatPrice(double price) {
+class CryptoCard extends StatelessWidget {
+  final String cryptoName;
+  final double price;
+  final String selectedCurrency;
+  final bool isLoading;
+
+  const CryptoCard({
+    Key? key,
+    required this.cryptoName,
+    required this.price,
+    required this.selectedCurrency,
+    required this.isLoading,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.lightBlueAccent,
+      elevation: 5.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
+        child: Text(
+          isLoading
+              ? 'Loading...'
+              : '1 $cryptoName = ${_formatPrice(price, selectedCurrency)}',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20.0,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatPrice(double price, String currencyCode) {
     // Create a NumberFormat instance for the selected currency
     final formatter = NumberFormat.currency(
       locale: 'en_US',  // Base locale for formatting
@@ -134,9 +203,9 @@ class _PriceScreenState extends State<PriceScreen> {
     String formattedPrice = formatter.format(price);
     
     // Get the currency symbol
-    String currencySymbol = _getCurrencySymbol(selectedCurrency);
+    String currencySymbol = _getCurrencySymbol(currencyCode);
     
-    return '$currencySymbol$formattedPrice $selectedCurrency';
+    return '$currencySymbol$formattedPrice $currencyCode';
   }
   
   String _getCurrencySymbol(String currencyCode) {
