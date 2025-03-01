@@ -2,6 +2,7 @@ import 'package:bitcoin_tracker_foo/coin_data.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
+import 'package:intl/intl.dart';
 
 class PriceScreen extends StatefulWidget {
   @override
@@ -25,6 +26,7 @@ class _PriceScreenState extends State<PriceScreen> {
       onChanged: (value) {
         setState(() {
           selectedCurrency = value!;
+          getSpotPrice();
         });
       },
     );
@@ -39,16 +41,14 @@ class _PriceScreenState extends State<PriceScreen> {
       backgroundColor: Colors.lightBlue,
       itemExtent: 32.0,
       onSelectedItemChanged: (selectedIndex) {
-        print(selectedIndex);
+        setState(() {
+          selectedCurrency = currenciesList[selectedIndex];
+          getSpotPrice();
+        });
       },
       children: pickerItems,
     );
   }
-
-  CoinData coinData = CoinData(
-    assetIDBase: 'BTC',
-    assetIDQuote: 'USD',
-  );
 
   double spotPrice = 0;
   bool isLoading = true;
@@ -57,6 +57,11 @@ class _PriceScreenState extends State<PriceScreen> {
     setState(() {
       isLoading = true;
     });
+    
+    CoinData coinData = CoinData(
+      assetIDBase: 'BTC',
+      assetIDQuote: selectedCurrency,
+    );
     
     double price = await coinData.getExchangeRate();
     
@@ -95,7 +100,7 @@ class _PriceScreenState extends State<PriceScreen> {
                 child: Text(
                   isLoading 
                       ? 'Loading...' 
-                      : '1 BTC = $spotPrice USD',
+                      : '1 BTC = ${_formatPrice(spotPrice)}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20.0,
@@ -115,5 +120,36 @@ class _PriceScreenState extends State<PriceScreen> {
         ],
       ),
     );
+  }
+
+  String _formatPrice(double price) {
+    // Create a NumberFormat instance for the selected currency
+    final formatter = NumberFormat.currency(
+      locale: 'en_US',  // Base locale for formatting
+      symbol: '',       // We'll add the symbol separately
+      decimalDigits: 2, // Show 2 decimal places
+    );
+    
+    // Format the price with commas and decimal places
+    String formattedPrice = formatter.format(price);
+    
+    // Get the currency symbol
+    String currencySymbol = _getCurrencySymbol(selectedCurrency);
+    
+    return '$currencySymbol$formattedPrice $selectedCurrency';
+  }
+  
+  String _getCurrencySymbol(String currencyCode) {
+    // Common currency symbols
+    Map<String, String> symbols = {
+      'USD': '\$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+      'AUD': 'A\$', 'CAD': 'C\$', 'CHF': 'Fr', 'CNY': '¥',
+      'HKD': 'HK\$', 'NZD': 'NZ\$', 'SEK': 'kr', 'NOK': 'kr',
+      'BRL': 'R\$', 'RUB': '₽', 'INR': '₹', 'MXN': 'Mex\$',
+      'ZAR': 'R', 'SGD': 'S\$', 'ILS': '₪', 'IDR': 'Rp',
+      'PLN': 'zł', 'RON': 'lei',
+    };
+    
+    return symbols[currencyCode] ?? currencyCode;
   }
 }
